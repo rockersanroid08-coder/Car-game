@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>NEON RUSH · Android Rockers</title>
+<style>
+*{box-sizing:border-box;user-select:none;-webkit-tap-highlight-color:transparent}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 20% 10%,#123b35,#06110f 72%);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;touch-action:pan-y}body{display:flex;justify-content:center;align-items:center;padding:8px}.game{width:min(400px,100%);padding:12px;border-radius:34px;background:linear-gradient(145deg,#102b26,#071914);border:1px solid #2d7657;box-shadow:0 25px 45px #000c,0 0 0 2px #3ddc84 inset,0 0 30px #3ddc8433}.bar{display:flex;align-items:center;gap:8px;padding:7px 7px 12px}.pill,.btn{border-radius:50px;font-weight:800;white-space:nowrap}.pill{padding:9px 17px;background:#071a14;color:#caffdc;border:1px solid #3ddc84;box-shadow:inset 0 -3px #173f2d,0 4px #020b07}.pill:before{content:'🏆 ';}.btn{border:1px solid #3ddc84;background:#12452d;color:#caffdc;padding:9px 13px;box-shadow:0 4px #062414;cursor:pointer}.new{background:linear-gradient(135deg,#3ddc84,#18a961);color:#03120a}.btn:active{transform:translateY(3px);box-shadow:0 1px #062414}canvas{width:100%;height:auto;display:block;border-radius:24px;background:#081a25;box-shadow:inset 0 0 0 2px #6ba5cf,0 8px #020b08,0 0 25px #3ddc8440;touch-action:none}.controls{display:flex;gap:14px;padding:14px 4px 0}.control{flex:1;border:0;border-radius:70px;padding:18px 0;background:linear-gradient(145deg,#28506e,#132f46);color:#eaf8ff;font-size:2.2rem;font-weight:900;box-shadow:0 6px #071b29,0 0 0 2px #73b4e8 inset;cursor:pointer}.control:active{transform:translateY(4px);box-shadow:0 2px #071b29}.note{text-align:center;color:#75b896;font-size:.68rem;letter-spacing:1.4px;margin:9px 0 2px;text-transform:uppercase}.brand{text-align:center;color:#3ddc84;font-size:.62rem;letter-spacing:3px;margin-top:7px}.loading{position:fixed;inset:0;background:#06110f;display:grid;place-content:center;text-align:center;color:#3ddc84;font-weight:900;letter-spacing:3px;font-size:1.35rem;z-index:10;transition:.45s}.loading:after{content:'';width:48px;height:48px;border:4px solid #17412f;border-top-color:#3ddc84;border-radius:50%;margin:20px auto 0;animation:spin .8s linear infinite}.loading.hide{opacity:0;pointer-events:none}@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:360px){.bar{gap:5px}.pill{padding:7px 10px;font-size:.86rem}.btn{padding:7px 9px;font-size:.78rem}.control{font-size:2rem;padding:15px 0}}
+</style>
+</head>
+<body>
+<div id="loading" class="loading">NEON RUSH</div>
+<main class="game">
+  <div class="bar">
+    <div class="pill"><span id="score">0</span></div>
+    <button id="audio" class="btn">🔊 ON</button>
+    <button id="new" class="btn new">↻ NEW</button>
+  </div>
+  <canvas id="game" width="360" height="600"></canvas>
+  <div class="controls"><button id="left" class="control">←</button><button id="right" class="control">→</button></div>
+  <div class="note">tap left / right or use buttons</div>
+  <div class="brand">ANDROID ROCKERS</div>
+</main>
+<script>
+(()=>{
+const c=document.getElementById('game'),x=c.getContext('2d'),W=360,H=600,scoreEl=document.getElementById('score'),loading=document.getElementById('loading');
+const road=new Image(),playerImg=new Image(),enemyImg=new Image();road.src='assets/road.jpg';playerImg.src='assets/player-car.png';enemyImg.src='assets/enemy-car.png';
+let loaded=0,over=false,score=0,speed=3.2,offset=0,spawn=0,left=false,right=false,audioOn=true,audioCtx=null;
+const p={x:156,y:490,w:48,h:84},obs=[];
+function ready(){if(++loaded===3){loading.classList.add('hide');reset();loop()}}
+[road,playerImg,enemyImg].forEach(i=>i.onload=ready);road.onerror=playerImg.onerror=enemyImg.onerror=ready;
+function initAudio(){if(audioCtx)return;try{audioCtx=new(window.AudioContext||window.webkitAudioContext)()}catch(e){audioOn=false}}
+function beep(f,d=.12,type='square'){if(!audioOn)return;initAudio();if(!audioCtx)return;audioCtx.resume();let o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type;o.frequency.value=f;g.gain.value=.08;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d)}
+function reset(){over=false;score=0;scoreEl.textContent='0';speed=3.2;offset=0;spawn=0;obs.length=0;p.x=156;left=right=false;document.querySelectorAll('.control').forEach(b=>b.disabled=false);beep(420,.16,'triangle')}
+function spawnEnemy(){const lanes=[60,180,300],w=48,h=84,l=lanes[(Math.random()*3)|0],xx=l-w/2;if(obs.some(o=>Math.abs(o.x-xx)<55&&o.y<125))return;obs.push({x:xx,y:-h-Math.random()*60,w,h})}
+function update(){if(over)return;if(left)p.x=Math.max(8,p.x-5.5);if(right)p.x=Math.min(W-p.w-8,p.x+5.5);speed=3.2+Math.min(3.5,score*.08);offset=(offset+speed)%H;for(let i=obs.length-1;i>=0;i--){let o=obs[i];o.y+=speed;if(p.x<o.x+o.w&&p.x+p.w>o.x&&p.y<o.y+o.h&&p.y+p.h>o.y){over=true;document.querySelectorAll('.control').forEach(b=>b.disabled=true);beep(90,.5,'sawtooth')}if(o.y>H+100){obs.splice(i,1);score++;scoreEl.textContent=score;beep(720,.1)}}if(++spawn>=65){spawnEnemy();spawn=0}}
+function draw(){x.clearRect(0,0,W,H);x.drawImage(road,0,offset,W,H);x.drawImage(road,0,offset-H,W,H);for(const o of obs)x.drawImage(enemyImg,o.x,o.y,o.w,o.h);x.drawImage(playerImg,p.x,p.y,p.w,p.h);x.font='bold 14px monospace';x.fillStyle='#3ddc84';x.shadowColor='#000';x.shadowBlur=8;x.fillText('⚡ '+speed.toFixed(1),20,40);x.shadowBlur=0;if(over){x.fillStyle='#000b';x.fillRect(0,0,W,H);x.textAlign='center';x.font='900 44px system-ui';x.fillStyle='#3ddc84';x.shadowColor='#3ddc84';x.shadowBlur=25;x.fillText('CRASH!',W/2,H/2-25);x.shadowBlur=0;x.font='800 18px system-ui';x.fillStyle='#d4ffe2';x.fillText('TAP NEW TO RESTART',W/2,H/2+25);x.textAlign='left'}}
+function loop(){update();draw();requestAnimationFrame(loop)}
+function press(dir,v){if(over)return;if(dir==='l')left=v;else right=v}
+[['left','l'],['right','r']].forEach(([id,d])=>{let b=document.getElementById(id);b.addEventListener('pointerdown',e=>{e.preventDefault();press(d,true)});['pointerup','pointercancel','pointerleave'].forEach(t=>b.addEventListener(t,()=>press(d,false)))});
+c.addEventListener('pointerdown',e=>{if(over)return;initAudio();if(audioCtx)audioCtx.resume();let r=c.getBoundingClientRect(),cx=(e.clientX-r.left)*W/r.width;p.x=Math.max(8,Math.min(W-p.w-8,p.x+(cx<W/2?-30:30)))});
+document.getElementById('new').onclick=reset;
+document.getElementById('audio').onclick=()=>{audioOn=!audioOn;document.getElementById('audio').textContent=audioOn?'🔊 ON':'🔇 OFF';if(audioOn)beep(600,.1)};
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')p.x=Math.max(8,p.x-16);if(e.key==='ArrowRight')p.x=Math.min(W-p.w-8,p.x+16);});
+})();
+</script>
+</body>
+</html>
